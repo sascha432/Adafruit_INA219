@@ -40,21 +40,21 @@
 #define INA219_CONFIG_BVOLTAGERANGE_MASK (0x2000) // Bus Voltage Range Mask
 
 /** bus voltage range values **/
-enum {
+typedef enum {
   INA219_CONFIG_BVOLTAGERANGE_16V = (0x0000), // 0-16V Range
   INA219_CONFIG_BVOLTAGERANGE_32V = (0x2000), // 0-32V Range
-};
+} INA219_BusVoltageEnum_t;
 
 /** mask for gain bits **/
 #define INA219_CONFIG_GAIN_MASK (0x1800) // Gain Mask
 
 /** values for gain bits **/
-enum {
+typedef enum {
   INA219_CONFIG_GAIN_1_40MV = (0x0000),  // Gain 1, 40mV Range
   INA219_CONFIG_GAIN_2_80MV = (0x0800),  // Gain 2, 80mV Range
   INA219_CONFIG_GAIN_4_160MV = (0x1000), // Gain 4, 160mV Range
   INA219_CONFIG_GAIN_8_320MV = (0x1800), // Gain 8, 320mV Range
-};
+} INA219_GainEnum_t;
 
 /** mask for bus ADC resolution bits **/
 #define INA219_CONFIG_BADCRES_MASK (0x0780)
@@ -72,7 +72,7 @@ enum {
   (0x0078) // Shunt ADC Resolution and Averaging Mask
 
 /** values for shunt ADC resolution **/
-enum {
+typedef enum {
   INA219_CONFIG_SADCRES_9BIT_1S_84US = (0x0000),   // 1 x 9-bit shunt sample
   INA219_CONFIG_SADCRES_10BIT_1S_148US = (0x0008), // 1 x 10-bit shunt sample
   INA219_CONFIG_SADCRES_11BIT_1S_276US = (0x0010), // 1 x 11-bit shunt sample
@@ -91,7 +91,7 @@ enum {
       (0x0070), // 64 x 12-bit shunt samples averaged together
   INA219_CONFIG_SADCRES_12BIT_128S_69MS =
       (0x0078), // 128 x 12-bit shunt samples averaged together
-};
+} INA219_SADCResolutionEnum_t;
 
 /** mask for operating mode bits **/
 #define INA219_CONFIG_MODE_MASK (0x0007) // Operating Mode Mask
@@ -131,6 +131,7 @@ class Adafruit_INA219 {
 public:
   Adafruit_INA219(uint8_t addr = INA219_ADDRESS);
   void begin(TwoWire *theWire = &Wire);
+  void setCalibration(INA219_BusVoltageEnum_t busVoltage, INA219_GainEnum_t gain, INA219_SADCResolutionEnum_t sADCRes = INA219_CONFIG_SADCRES_12BIT_1S_532US, float Rshunt = 0.1);
   void setCalibration_32V_2A();
   void setCalibration_32V_1A();
   void setCalibration_16V_400mA();
@@ -147,12 +148,15 @@ private:
   uint32_t ina219_calValue;
   // The following multipliers are used to convert raw current and power
   // values to mA and mW, taking into account the current config settings
-  uint32_t ina219_currentDivider_mA;
+  //uint32_t ina219_currentDivider_mA;
+  float ina219_currentMultiplier; // = (1 / (float)ina219_currentDivider_mA)
   float ina219_powerMultiplier_mW;
 
   void init();
   void wireWriteRegister(uint8_t reg, uint16_t value);
   void wireReadRegister(uint8_t reg, uint16_t *value);
+
+public:
   int16_t getBusVoltage_raw();
   int16_t getShuntVoltage_raw();
   int16_t getCurrent_raw();

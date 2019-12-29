@@ -65,6 +65,18 @@ void Adafruit_INA219::wireReadRegister(uint8_t reg, uint16_t *value) {
   *value = ((_i2c->read() << 8) | _i2c->read());
 }
 
+void Adafruit_INA219::setCalibration(INA219_BusVoltageEnum_t busVoltage, INA219_GainEnum_t gain, INA219_SADCResolutionEnum_t sADCRes, float Rshunt)
+{
+  ina219_calValue = 4096;
+  // for 4096
+  ina219_currentMultiplier = Rshunt * 10.0f;
+  ina219_powerMultiplier_mW = 2 * ina219_currentMultiplier;
+
+  wireWriteRegister(INA219_REG_CALIBRATION, ina219_calValue);
+  uint16_t config = busVoltage | gain | INA219_CONFIG_BADCRES_12BIT | sADCRes | INA219_CONFIG_MODE_SANDBVOLT_CONTINUOUS;
+  wireWriteRegister(INA219_REG_CONFIG, config);
+}
+
 /*!
  *  @brief  Configures to INA219 to be able to measure up to 32V and 2A
  *          of current.  Each unit of current corresponds to 100uA, and
@@ -137,7 +149,8 @@ void Adafruit_INA219::setCalibration_32V_2A() {
   // MaximumPower = 102.4W
 
   // Set multipliers to convert raw current/power values
-  ina219_currentDivider_mA = 10; // Current LSB = 100uA per bit (1000/100 = 10)
+  //ina219_currentDivider_mA = 10; // Current LSB = 100uA per bit (1000/100 = 10)
+  ina219_currentMultiplier = 1.0f / 10.0f;
   ina219_powerMultiplier_mW = 2; // Power LSB = 1mW per bit (2/1)
 
   // Set Calibration register to 'Cal' calculated above
@@ -161,9 +174,9 @@ void Adafruit_INA219::powerSave(bool on) {
   wireReadRegister(INA219_REG_CONFIG, &current);
   uint8_t next;
   if (on) {
-    next = current | INA219_CONFIG_MODE_POWERDOWN; 
+    next = current | INA219_CONFIG_MODE_POWERDOWN;
   } else {
-    next = current & ~INA219_CONFIG_MODE_POWERDOWN; 
+    next = current & ~INA219_CONFIG_MODE_POWERDOWN;
   }
   wireWriteRegister(INA219_REG_CONFIG, next);
 }
@@ -244,7 +257,8 @@ void Adafruit_INA219::setCalibration_32V_1A() {
   // MaximumPower = 41.94176W
 
   // Set multipliers to convert raw current/power values
-  ina219_currentDivider_mA = 25;    // Current LSB = 40uA per bit (1000/40 = 25)
+  //ina219_currentDivider_mA = 25;    // Current LSB = 40uA per bit (1000/40 = 25)
+  ina219_currentMultiplier = 1.0f / 25.0f;
   ina219_powerMultiplier_mW = 0.8f; // Power LSB = 800uW per bit
 
   // Set Calibration register to 'Cal' calculated above
@@ -332,7 +346,8 @@ void Adafruit_INA219::setCalibration_16V_400mA() {
   // MaximumPower = 6.4W
 
   // Set multipliers to convert raw current/power values
-  ina219_currentDivider_mA = 20;    // Current LSB = 50uA per bit (1000/50 = 20)
+  //ina219_currentDivider_mA = 20;    // Current LSB = 50uA per bit (1000/50 = 20)
+  ina219_currentMultiplier = 1.0f / 20.0f;
   ina219_powerMultiplier_mW = 1.0f; // Power LSB = 1mW per bit
 
   // Set Calibration register to 'Cal' calculated above
@@ -352,7 +367,8 @@ void Adafruit_INA219::setCalibration_16V_400mA() {
  */
 Adafruit_INA219::Adafruit_INA219(uint8_t addr) {
   ina219_i2caddr = addr;
-  ina219_currentDivider_mA = 0;
+  //ina219_currentDivider_mA = 0;
+  ina219_currentMultiplier = 0.0f;
   ina219_powerMultiplier_mW = 0.0f;
 }
 
@@ -460,8 +476,7 @@ float Adafruit_INA219::getBusVoltage_V() {
  */
 float Adafruit_INA219::getCurrent_mA() {
   float valueDec = getCurrent_raw();
-  valueDec /= ina219_currentDivider_mA;
-  return valueDec;
+  return valueDec * ina219_currentMultiplier;
 }
 
 /*!
@@ -471,6 +486,5 @@ float Adafruit_INA219::getCurrent_mA() {
  */
 float Adafruit_INA219::getPower_mW() {
   float valueDec = getPower_raw();
-  valueDec *= ina219_powerMultiplier_mW;
-  return valueDec;
+  return valueDec * ina219_powerMultiplier_mW;
 }
